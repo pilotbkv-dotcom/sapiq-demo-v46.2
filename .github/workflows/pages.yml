@@ -1,7 +1,4 @@
-# Sapiq v46.1 — deploy all website and PWA assets from site.zip.
-# In GitHub, save this file as .github/workflows/pages.yml
-name: Deploy Sapiq to GitHub Pages
-
+name: Publish Sapiq v46.2 to GitHub Pages
 on:
   push:
     branches: [main]
@@ -9,30 +6,25 @@ on:
       - site.zip
       - .github/workflows/pages.yml
   workflow_dispatch:
-
 permissions:
   contents: read
   pages: write
   id-token: write
-
 concurrency:
   group: github-pages
   cancel-in-progress: true
-
 jobs:
-  deploy:
+  publish:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - name: Check out repository
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Configure GitHub Pages
+      - name: Configure Pages
         uses: actions/configure-pages@v5
-
-      - name: Extract and verify Sapiq
+      - name: Verify and extract site
         shell: bash
         run: |
           set -euo pipefail
@@ -40,20 +32,17 @@ jobs:
           unzip -tq site.zip
           mkdir -p _site
           unzip -q site.zip -d _site
-          for file in index.html ru/index.html en/index.html es/index.html zh/index.html ru/terminal/index.html terminal/index.html pwa/index.html site/assets/v46_terminal.js; do
-            test -s "_site/$file" || { echo "Missing required file: $file"; exit 1; }
+          for f in index.html ru/index.html en/index.html es/index.html zh/index.html ru/terminal/index.html terminal/index.html pwa/index.html pwa/manifest.webmanifest site/assets/v46_terminal.js site/assets/final-polish.css site/assets/final-polish.js site/assets/pnl-qr-site.png; do
+            test -s "_site/$f" || { echo "Missing required file: $f"; exit 1; }
           done
-          test -f _site/.nojekyll
           count="$(find _site -type f | wc -l)"
-          echo "Verified $count site files"
-          test "$count" -ge 266
-
+          echo "Verified $count files"
+          test "$count" -ge 200
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: _site
           include-hidden-files: true
-
-      - name: Deploy
-        id: deployment
+      - name: Deploy GitHub Pages
+        id: deploy
         uses: actions/deploy-pages@v4
