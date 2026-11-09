@@ -1,0 +1,58 @@
+# Sapiq v45.2 — publish the contents of site.zip, not the zip file itself.
+# Create this file in GitHub at .github/workflows/pages.yml
+name: Publish Sapiq to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - site.zip
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Get files
+        uses: actions/checkout@v4
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Extract and verify Sapiq site
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s site.zip
+          unzip -tq site.zip
+          mkdir -p _site
+          unzip -q site.zip -d _site
+          for f in index.html ru/index.html en/index.html es/index.html zh/index.html pwa/index.html; do
+            test -s "_site/$f" || { echo "Missing page: $f"; exit 1; }
+          done
+          count="$(find _site -type f | wc -l)"
+          echo "Validated $count site files"
+          test "$count" -eq 257
+
+      - name: Prepare GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+          include-hidden-files: true
+
+      - name: Publish site
+        id: deployment
+        uses: actions/deploy-pages@v4
